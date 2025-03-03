@@ -35,9 +35,9 @@ The data source will return the following columns:
 1. Select "Get Resource Availability".
 1. Optionally fill in the ID of a resource pool, or link the value to a different component.
 
-![How To Use Query](Documentation/How_To_Use_Query.png)
+![How To Use Query](./CatalogInformation/Images/How_To_Use_Query.png)
 
 ## Screenshots
 
-![LCA_Timeline](Documentation/Screenshot_LCA.png)
-![LCA_Table](Documentation/Screenshot_LCA_Table.png)
+![LCA_Timeline](./CatalogInformation/Images/Screenshot_LCA.png)
+![LCA_Table](./CatalogInformation/Images/Screenshot_LCA_Table.png)
