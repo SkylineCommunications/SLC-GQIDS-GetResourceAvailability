@@ -5,6 +5,8 @@ VisualStudioVersion = 17.13.35825.156
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SLC-GQIDS-GetResourceAvailability", "SLC-GQIDS-GetResourceAvailability\SLC-GQIDS-GetResourceAvailability.csproj", "{84E8472D-9BF2-D781-5782-42BF95F1CA96}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SLC-GQIDS-GetResourceAvailabilityTests", "SLC-GQIDS-GetResourceAvailabilityTests\SLC-GQIDS-GetResourceAvailabilityTests.csproj", "{F60B8999-94D9-4A19-9666-7CB78E9CD1DE}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{84E8472D-9BF2-D781-5782-42BF95F1CA96}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{84E8472D-9BF2-D781-5782-42BF95F1CA96}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{84E8472D-9BF2-D781-5782-42BF95F1CA96}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F60B8999-94D9-4A19-9666-7CB78E9CD1DE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F60B8999-94D9-4A19-9666-7CB78E9CD1DE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F60B8999-94D9-4A19-9666-7CB78E9CD1DE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F60B8999-94D9-4A19-9666-7CB78E9CD1DE}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
