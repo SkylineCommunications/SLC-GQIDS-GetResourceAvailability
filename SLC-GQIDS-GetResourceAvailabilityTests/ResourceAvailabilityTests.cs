@@ -1,4 +1,4 @@
-﻿namespace SLC_GQIDS_GetResourceAvailabilityTests
+namespace SLC_GQIDS_GetResourceAvailabilityTests
 {
     using System;
     using System.Collections.Generic;
@@ -6,7 +6,6 @@
     using GetResourceAvailability;
     using Moq;
     using NUnit.Framework;
-    using NUnit.Framework.Legacy;
     using Skyline.DataMiner.Analytics.GenericInterface;
     using Skyline.DataMiner.Net;
     using Skyline.DataMiner.Net.ManagerStore;

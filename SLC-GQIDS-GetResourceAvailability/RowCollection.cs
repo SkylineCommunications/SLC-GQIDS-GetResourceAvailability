@@ -12,18 +12,20 @@
     /// Keeps track of the rows that have been returned, and the resources those rows were generated from.
     /// Responsible for deciding which rows need to be added/updated/removed when a resource is updated/removed, or retrieved by paging.
     /// </summary>
-    public class RowCollection
+    internal class RowCollection
     {
         private readonly Dictionary<Guid, DateTime> _resourceToLastModifiedTimeStamp = new Dictionary<Guid, DateTime>();
         private readonly Dictionary<Guid, GQIRow[]> _resourceToRows = new Dictionary<Guid, GQIRow[]>();
         private readonly RowFactory _rowFactory;
         private readonly object _updateLock = new object();
+
         public RowCollection(RowFactory rowFactory)
         {
             _rowFactory = rowFactory;
         }
 
         public IGQIUpdater Updater { get; set; }
+
         public GQIRow[] RegisterRowsForResource(Resource resource, bool sendUpdate)
         {
             GQIRow[] newRows;

@@ -66,6 +66,8 @@ namespace GetResourceAvailability
 
     using SLDataGateway.API.Querying;
 
+#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
+
     [GQIMetaData(Name = "Get Resource Availability")]
     public sealed class GetResourceAvailabilityDataSource : IGQIDataSource, IGQIOnInit, IGQIInputArguments, IGQIUpdateable, IGQIOnDestroy
     {

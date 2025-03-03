@@ -11,7 +11,7 @@
     /// <summary>
     /// Responsible for converting a resource to the correct GQI rows.
     /// </summary>
-    public class RowFactory
+    internal class RowFactory
     {
         private readonly AvailabilityContext _context;
 
