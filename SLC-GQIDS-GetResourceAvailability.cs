@@ -45,81 +45,241 @@ Revision History:
 
 DATE		VERSION		AUTHOR			COMMENTS
 
-03/03/2025	1.0.0.1		SVE, Skyline	Initial version
+13/01/2025	1.0.0.1		Skyline Communications, Skyline	Initial version
 ****************************************************************************
 */
 
-namespace SLCGQIDSGetResourceAvailability
+using Skyline.DataMiner.Net.ResponseErrorData;
+
+namespace GetResourceAvailability
 {
-	using System;
-	using Skyline.DataMiner.Analytics.GenericInterface;
+    using System;
+    using System.Linq;
 
-	/// <summary>
-	/// Represents a data source.
-	/// See: https://aka.dataminer.services/gqi-external-data-source for a complete example.
-	/// </summary>
-	[GQIMetaData(Name = "SLC-GQIDS-GetResourceAvailability")]
-	public sealed class SLCGQIDSGetResourceAvailability : IGQIDataSource
-		, IGQIOnInit
-		, IGQIInputArguments
-		, IGQIUpdateable
-		, IGQIOnDestroy
-	{
-		public OnInitOutputArgs OnInit(OnInitInputArgs args)
-		{
-			// Initialize the data source
-			// See: https://aka.dataminer.services/igqioninit-oninit
-			return default;
-		}
+    using Skyline.DataMiner.Analytics.GenericInterface;
+    using Skyline.DataMiner.Net;
+    using Skyline.DataMiner.Net.ManagerStore;
+    using Skyline.DataMiner.Net.Messages;
+    using Skyline.DataMiner.Net.Messages.SLDataGateway;
+    using Skyline.DataMiner.Net.ResourceManager.Objects.ResourceAvailability;
+    using Skyline.DataMiner.Net.SubscriptionFilters;
 
-		public GQIArgument[] GetInputArguments()
-		{
-			// Define data source input arguments
-			// See: https://aka.dataminer.services/igqiinputarguments-getinputarguments
-			return Array.Empty<GQIArgument>();
-		}
+    using SLDataGateway.API.Querying;
 
-		public OnArgumentsProcessedOutputArgs OnArgumentsProcessed(OnArgumentsProcessedInputArgs args)
-		{
-			// Process input argument values
-			// See: https://aka.dataminer.services/igqiinputarguments-onargumentsprocessed
-			return default;
-		}
+    [GQIMetaData(Name = "Get Resource Availability")]
+    public sealed class GetResourceAvailabilityDataSource : IGQIDataSource, IGQIOnInit, IGQIInputArguments, IGQIUpdateable, IGQIOnDestroy
+    {
+        private readonly string _subscriptionSetId = $"GetResourceUsagesDataSource_{Guid.NewGuid()}";
 
-		public GQIColumn[] GetColumns()
-		{
-			// Define data source columns
-			// See: https://aka.dataminer.services/igqidatasource-getcolumns
-			return Array.Empty<GQIColumn>();
-		}
+        private readonly GQIStringArgument _resourcePoolArgument = new GQIStringArgument("Resource Pool")
+        {
+            IsRequired = false
+        };
 
-		public void OnStartUpdates(IGQIUpdater updater)
-		{
-			// Enable the data source to send updates
-			// See: https://aka.dataminer.services/igqiupdateable-onstartupdates
-		}
+        private readonly AvailabilityContext _availabilityContext;
 
-		public GQIPage GetNextPage(GetNextPageInputArgs args)
-		{
-			// Define data source rows
-			// See: https://aka.dataminer.services/igqidatasource-getnextpage
-			return new GQIPage(Array.Empty<GQIRow>())
-			{
-				HasNextPage = false,
-			};
-		}
+        private GQIDMS _dms;
+        private ResourceManagerHelper _rmHelper;
+        private PagingHelper<Resource> _resourcePagingHelper;
+        private ResourcePool _poolToFilterOn;
+        private RowCollection _rowCollection;
+        private IConnection _connection;
+        private IGQILogger _logger;
+        private SubscriptionFilter _subscriptionFilter;
 
-		public void OnStopUpdates()
-		{
-			// Stop sending updates
-			// See: https://aka.dataminer.services/igqiupdateable-onstopupdates
-		}
+        public GetResourceAvailabilityDataSource() : this(new AvailabilityContext() { Now = DateTimeOffset.Now })
+        {
+        }
 
-		public OnDestroyOutputArgs OnDestroy(OnDestroyInputArgs args)
-		{
-			// Clean up the data source
-			// See: https://aka.dataminer.services/igqiondestroy-ondestroy
-			return default;
-		}
-	}
+        public GetResourceAvailabilityDataSource(AvailabilityContext availabilityContext)
+        {
+            _availabilityContext = availabilityContext;
+        }
+
+        public OnInitOutputArgs OnInit(OnInitInputArgs args)
+        {
+            _logger = args.Logger ?? throw new ArgumentNullException(nameof(args.Logger), $"Failed to initialize ad-hoc data source: logger in '{nameof(args)}' was null");
+            _dms = args.DMS ?? throw new ArgumentNullException(nameof(args.DMS), $"Failed to initialize ad-hoc data source: logger in '{nameof(args)}' was null");
+            _connection = _dms.GetConnection() ?? throw new ArgumentNullException(nameof(args.DMS), $"Failed to initialize ad-hoc data source: connection in 'DMS' was null"); ;
+            _rmHelper = new ResourceManagerHelper(_connection.HandleSingleResponseMessage);
+            _rowCollection = new RowCollection(new RowFactory(_availabilityContext));
+
+            return default;
+        }
+
+        public GQIArgument[] GetInputArguments()
+        {
+            return new GQIArgument[] { _resourcePoolArgument };
+        }
+
+        public OnArgumentsProcessedOutputArgs OnArgumentsProcessed(OnArgumentsProcessedInputArgs args)
+        {
+            FillPoolToFilterOn(args);
+
+            var resourceFilter = GetResourceFilter();
+
+            _logger.Information($"Preparing paging for resources with filter '{resourceFilter}'");
+
+            _resourcePagingHelper = _rmHelper.PrepareResourcePaging(resourceFilter.OrderBy(ResourceExposers.Name));
+
+            return default;
+        }
+
+        public GQIColumn[] GetColumns()
+        {
+            return new GQIColumn[]
+            {
+                new GQIStringColumn("Resource ID"),
+                new GQIDateTimeColumn("Start time"),
+                new GQIDateTimeColumn("End time"),
+                new GQIStringColumn("Resource Name"),
+                new GQIStringColumn("Type"), // Rolling window or fixed
+            };
+        }
+
+        public void OnStartUpdates(IGQIUpdater updater)
+        {
+            _rowCollection.Updater = updater;
+
+            if (_connection == null)
+            {
+                return;
+            }
+
+            _connection.OnNewMessage += HandleResourceManagerEventMessage;
+
+            var resourceFilter = GetResourceFilter();
+
+            _subscriptionFilter = new SubscriptionFilter<ResourceManagerEventMessage, Resource>(resourceFilter);
+
+            _logger.Information($"Subscribing on resource updates with filter {resourceFilter}");
+
+            _connection.AddSubscription(_subscriptionSetId, _subscriptionFilter);
+
+            _logger.Information($"Done subscribing on resource updates with filter {resourceFilter}");
+        }
+
+        private FilterElement<Resource> GetResourceFilter()
+        {
+            FilterElement<Resource> resourceFilter = new TRUEFilterElement<Resource>();
+            if (_poolToFilterOn != null)
+            {
+                resourceFilter = ResourceExposers.PoolGUIDs.Contains(_poolToFilterOn.GUID);
+            }
+
+            return resourceFilter;
+        }
+
+        public GQIPage GetNextPage(GetNextPageInputArgs args)
+        {
+            try
+            {
+                if (!_resourcePagingHelper.MoveToNextPage())
+                {
+                    return new GQIPage(Array.Empty<GQIRow>())
+                    {
+                        HasNextPage = false
+                    };
+                }
+            }
+            catch (CrudFailedException ex) when (IsNoPermissionException(ex))
+            {
+                // Same behavior as built-in data sources: return an empty dataset if the user does not have permissions.
+                return new GQIPage(Array.Empty<GQIRow>())
+                {
+                    HasNextPage = false
+                };
+            }
+
+            var resources = _resourcePagingHelper.GetCurrentPage();
+            _logger.Information($"Getting next page. Got {resources.Count} resources");
+
+            var resourceRows = resources.SelectMany(r => _rowCollection.RegisterRowsForResource(r, sendUpdate: false)).ToArray();
+
+            return new GQIPage(resourceRows)
+            {
+                HasNextPage = _resourcePagingHelper.HasNextPage()
+            };
+        }
+
+        private static bool IsNoPermissionException(CrudFailedException ex)
+        {
+            return ex.TraceData != null && ex.TraceData.GetErrorDataOfType<ResourceManagerErrorData>().Any(e => e.ErrorReason == ResourceManagerErrorData.Reason.NotAllowed);
+        }
+
+        public void OnStopUpdates()
+        {
+            RemoveSubscription();
+        }
+
+        public OnDestroyOutputArgs OnDestroy(OnDestroyInputArgs args)
+        {
+            RemoveSubscription();
+            _rowCollection = null;
+            _rmHelper = null;
+            _connection = null;
+            _dms = null;
+            _logger = null;
+
+            return default;
+        }
+
+        private void FillPoolToFilterOn(OnArgumentsProcessedInputArgs args)
+        {
+            if (!args.TryGetArgumentValue(_resourcePoolArgument, out var poolId))
+            {
+                return;
+            }
+
+            if (!Guid.TryParse(poolId, out var poolGuid))
+            {
+                ThrowInvalidPool($"Could not parse '{poolId}' to a valid ID for a resource pool");
+            }
+
+            _poolToFilterOn = _rmHelper.GetResourcePool(poolGuid);
+            if (_poolToFilterOn == null)
+            {
+                ThrowInvalidPool($"Could not find resource pool with ID '{poolId}'");
+            }
+        }
+
+        private void ThrowInvalidPool(string errorMessage)
+        {
+            _logger.Error(errorMessage);
+            throw new ArgumentException(errorMessage);
+        }
+
+        private void HandleResourceManagerEventMessage(object sender, NewMessageEventArgs args)
+        {
+            if (!(args.Message is ResourceManagerEventMessage resourceManagerEvent))
+            {
+                return;
+            }
+
+            foreach (var oneResource in resourceManagerEvent.DeletedResources)
+            {
+                _rowCollection.RemoveRowsForResource(oneResource);
+            }
+
+            foreach (var oneResource in resourceManagerEvent.UpdatedResources)
+            {
+                _rowCollection.RegisterRowsForResource(oneResource, sendUpdate: true);
+            }
+        }
+
+        private void RemoveSubscription()
+        {
+            if (_connection == null)
+            {
+                return;
+            }
+
+            _connection.OnNewMessage -= HandleResourceManagerEventMessage;
+
+            if (_subscriptionFilter != null)
+            {
+                _connection.RemoveSubscription(_subscriptionSetId, _subscriptionFilter);
+            }
+        }
+    }
 }
