@@ -42,8 +42,7 @@ short_description: An ad hoc data source that allows users to visualize resource
 # A valid URL that points to the source code.
 #   A valid URL
 #   Max length: 2048 characters
-#   Note: When Skyline Communications Reusable GitHub workflows are used, this will be automatically filled in.
-source_code_url:
+source_code_url: https://github.com/SkylineCommunications/SLC-GQIDS-GetResourceAvailability
 # [Optional]
 # A valid URL that points to documentation.
 #   A valid URL
