@@ -1,8 +1,8 @@
-# SLC-GQIDS-GetResourceAvailability
+# Get Resource Availability
 
 This repository contains a GQI ad-hoc data source to fetch the availability of a Resource.
 
-> [!Warning]
+> [!WARNING]
 > Minimum required DataMiner version 10.5.3.
 
 This custom data source returns the time spans in which resources are unavailable based on their availability window (see [Resource availability](https://docs.dataminer.services/user-guide/Advanced_Modules/SRM/SRM_Resource_Availability.html)). Resources that do not have an availability window will return a row as well, with no value for the 'Start Time', 'End Time' and 'Type' columns. This allows for the display of resources without an availability window on a timeline component.
@@ -24,7 +24,7 @@ The data source will return the following columns:
 | Type          	| Either 'Fixed', if the start of this unavailability is not time-dependent, or 'RollingWindow' if the start of the unavailability moves as a rolling window.   	|
 
 
-> [!Warning]
+> [!WARNING]
 > If a pool filter is not used, all resources on the system will be returned by the data source. When the query is linked to a timeline component, the timeline component will read all pages before displaying anything. On systems with a large amount of resources that can cause performance issues.
 
 ## How to use
